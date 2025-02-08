@@ -1,0 +1,132 @@
+import pygame
+import random
+
+# Inisialisasi pygame
+pygame.init()
+
+# Konstanta layar
+WIDTH, HEIGHT = 800, 300
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+DARK_GREEN = (0, 100, 0)
+BROWN = (139, 69, 19)
+
+# Setup layar
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Dino Game")
+clock = pygame.time.Clock()
+
+# Dino
+dino_width, dino_height = 40, 40
+dino_x, dino_y = 50, HEIGHT - dino_height - 30
+dino_vel_y = 0
+ground = HEIGHT - dino_height - 30
+grav = 1
+is_jumping = False
+
+# Rintangan (Kaktus)
+obs_speed = 5
+obstacles = []
+
+# Skor
+score = 0
+font = pygame.font.SysFont("Arial", 30)
+
+def draw_dino(x, y):
+    pygame.draw.rect(screen, GREEN, (x, y, dino_width, dino_height))  # Badan
+    pygame.draw.circle(screen, GREEN, (x + 30, y + 10), 10)  # Kepala
+    pygame.draw.rect(screen, BLACK, (x + 35, y + 5, 5, 5))  # Mata
+    pygame.draw.rect(screen, BROWN, (x + 5, y + 35, 10, 5))  # Kaki kiri
+    pygame.draw.rect(screen, BROWN, (x + 25, y + 35, 10, 5))  # Kaki kanan
+
+def draw_obstacle(x, y, width, height):
+    pygame.draw.rect(screen, DARK_GREEN, (x, y, width, height))
+    pygame.draw.rect(screen, DARK_GREEN, (x + width // 3, y - 20, width // 3, 30))  # Cabang atas lebih panjang
+
+def show_message(text, x, y):
+    msg = font.render(text, True, BLACK)
+    screen.blit(msg, (x, y))
+
+def show_score(score):
+    score_text = font.render(f"Score: {score}", True, BLACK)
+    screen.blit(score_text, (10, 10))
+
+def add_obstacle():
+    new_obs_width = random.randint(10, 15)  # Lebih ramping
+    new_obs_height = random.randint(50, 80)  # Lebih tinggi
+    new_obs_x = WIDTH + random.randint(100, 300)
+    new_obs_y = HEIGHT - new_obs_height - 30
+    obstacles.append([new_obs_x, new_obs_y, new_obs_width, new_obs_height])
+    
+    # Secara acak tambahkan rintangan kedua dengan jarak bervariasi
+    if random.random() < 0.3:  # 30% kemungkinan menambah rintangan kedua
+        second_obs_x = new_obs_x + random.randint(50, 150)
+        second_obs_width = random.randint(10, 15)
+        second_obs_height = random.randint(50, 80)
+        second_obs_y = HEIGHT - second_obs_height - 30
+        obstacles.append([second_obs_x, second_obs_y, second_obs_width, second_obs_height])
+
+running = True
+game_over = False
+add_obstacle()
+
+while running:
+    screen.fill(WHITE)
+    
+    if not game_over:
+        # Event handling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN and not is_jumping:
+                if event.key == pygame.K_SPACE:
+                    dino_vel_y = -15
+                    is_jumping = True
+        
+        # Update Dino
+        dino_y += dino_vel_y
+        if dino_y >= ground:
+            dino_y = ground
+            is_jumping = False
+        else:
+            dino_vel_y += grav
+        
+        # Update Rintangan
+        for obstacle in obstacles:
+            obstacle[0] -= obs_speed
+        
+        # Hapus rintangan yang keluar layar dan tambah baru
+        if obstacles and obstacles[0][0] < -obstacles[0][2]:
+            obstacles.pop(0)
+            score += 1
+            if score % 5 == 0:
+                obs_speed += 1  # Tambah kecepatan setiap 5 poin
+            add_obstacle()
+        
+        # Cek tabrakan
+        for obstacle in obstacles:
+            if dino_x < obstacle[0] + obstacle[2] and dino_x + dino_width > obstacle[0] and dino_y + dino_height > obstacle[1]:
+                game_over = True
+        
+        # Gambar objek
+        draw_dino(dino_x, dino_y)
+        for obstacle in obstacles:
+            draw_obstacle(*obstacle)
+        show_score(score)
+    else:
+        show_message("Game Over! Tekan R untuk restart", WIDTH // 4, HEIGHT // 3)
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    dino_y = ground
+                    obs_speed = 5
+                    score = 0
+                    game_over = False
+                    obstacles = []
+                    add_obstacle()
+    
+    pygame.display.update()
+    clock.tick(30)
+
+pygame.quit()
